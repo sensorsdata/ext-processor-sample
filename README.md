@@ -4,7 +4,7 @@
 
 Sensors Analytics 从 1.6 开始为用户开放自定义“数据预处理模块”，即为 SDK 等方式接入的数据（不包括批量导入工具方式）提供一个简单的 ETL 流程，使数据接入更加灵活。
 
-例如 SDK 发来一条数据内容如下：
+例如 SDK 发来一条数据，传入“数据预处理模块”时格式如下：
 
 ```json
 {
@@ -12,13 +12,15 @@ Sensors Analytics 从 1.6 开始为用户开放自定义“数据预处理模块
     "time":1434556935000,
     "type":"track",
     "event":"ViewProduct",
+    "project": "default",
+    "ip":"123.123.123.123",
     "properties":{
         "product_name":"苹果"
     }
 }
 ```
 
-这时希望增加一个字段 `product_classify`，表示产品的分类，将数据处理成：
+这时希望增加一个字段 `product_classify`，表示产品的分类，可通过“数据预处理模块”将数据处理成：
 
 ```json
 {
@@ -26,14 +28,13 @@ Sensors Analytics 从 1.6 开始为用户开放自定义“数据预处理模块
     "time":1434556935000,
     "type":"track",
     "event":"ViewProduct",
+    "project": "default",
     "properties":{
         "product_name":"苹果",
         "product_classify":"水果"
     }
 }
 ```
-
-这时就可通过“数据预处理模块”将数据预处理再导入 Sensors Analytics。
 
 ## 2. 开发方法
 
@@ -49,8 +50,9 @@ public interface ExtProcessor {
 }
 ```
 
-* `参数 String record`: **一条符合 Sensors Analytics 的数据格式定义的 JSON 文本**，例如概述中的第一个 JSON;
-* `返回值`: 经过处理后的 JSON 或 JSON 数组，例如概述中的第二个 JSON。其格式也需要符合 Sensors Analytics 的数据格式定义;
+* 参数: 一条符合 [Sensors Analytics 的数据格式定义](https://www.sensorsdata.cn/manual/data_schema.html)的 JSON 文本，例如概述中的第一个 JSON。与 [数据格式](https://www.sensorsdata.cn/manual/data_schema.html) 唯一区别在于数据中包含字段 `ip` ，值为接收数据时取到的客户端 IP;
+* 返回值: 经过处理后的 JSON 或 JSON 数组，例如概述中的第二个 JSON。其格式需要符合 [Sensors Analytics 的数据格式定义](https://www.sensorsdata.cn/manual/data_schema.html); 如果返回值包含多条数据，可返回一个 JSON 数组，数组中的每个元素为一条符合 [数据格式](https://www.sensorsdata.cn/manual/data_schema.html) 的数据; 若返回值为 `null`，表示抛弃这条数据;
+* 异常: 抛出异常将导致这条数据被抛弃并输出错误日志;
 
 本 repo 提供了一个完整的“数据预处理模块”样例代码，用于实现“概述”中所描述的样例场景，定义接口文件：
 
@@ -98,12 +100,12 @@ usage: [ext-processor-utils] [-c <arg>] [-h] [-j <arg>] -m <arg>
  -h,--help           help
  -j,--jar <arg>      包含 ExtProcessor 的 jar, 例如 custom-processor-0.1.jar
  -m,--method <arg>   操作类型, 可选 test/run/install/uninstall/info
-                     test: 测试 jar 是否可加载;
-                     run:  运行指定 class 类的 process 方法, 以标准输入的逐行数据作为参数输入,
-                     将返回结果输出到标准输出;
+                     test:      测试 jar 是否可加载;
                      install:   安装 ExtProcessor;
                      uninstall: 卸载 ExtProcessor;
                      info:      查看当前配置状态;
+                     run:       运行指定 class 类的 process 方法, 以标准输入的逐行数据作为参数输入,
+                                将返回结果输出到标准输出;
 ```
 
 使用 `test` 方法测试 JAR 并加载 Class：
@@ -156,4 +158,4 @@ usage: [ext-processor-utils] [-c <arg>] [-h] [-j <arg>] -m <arg>
 ## 8. 其他
 
 * 如果想要抛弃一条数据，`process` 函数直接返回 `null` 即可;
-* 如希望返回多条数据，请返回一个 JSON 数组，数组中的每个元素为一条符合 Sensors Analytics 的数据;
+* 如希望返回多条数据，请返回一个 JSON 数组，数组中的每个元素为一条符合 [Sensors Analytics 的数据格式定义](https://www.sensorsdata.cn/manual/data_schema.html);
