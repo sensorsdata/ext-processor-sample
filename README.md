@@ -4,6 +4,12 @@
 
 Sensors Analytics 从 1.6 开始为用户开放自定义“数据预处理模块”，即为 SDK 等方式接入的数据（不包括批量导入工具方式）提供一个简单的 ETL 流程，使数据接入更加灵活。
 
+可以使用“数据预处理模块”处理的数据来源包括：
+
+* SDK（各语言 SDK 直接发送的数据，包括可视化埋点的数据。使用 LoggingConsumer 将数据写到文件再使用批量导入工具除外）;
+* LogAgent;
+* FormatImporter;
+
 例如 SDK 发来一条数据，传入“数据预处理模块”时格式如下：
 
 ```json
@@ -53,6 +59,8 @@ public interface ExtProcessor {
 * 参数: 一条符合 [Sensors Analytics 的数据格式定义](https://www.sensorsdata.cn/manual/data_schema.html)的 JSON 文本，例如概述中的第一个 JSON。与 [数据格式](https://www.sensorsdata.cn/manual/data_schema.html) 唯一区别在于数据中包含字段 `ip` ，值为接收数据时取到的客户端 IP;
 * 返回值: 经过处理后的 JSON 或 JSON 数组，例如概述中的第二个 JSON。其格式需要符合 [Sensors Analytics 的数据格式定义](https://www.sensorsdata.cn/manual/data_schema.html); 如果返回值包含多条数据，可返回一个 JSON 数组，数组中的每个元素为一条符合 [数据格式](https://www.sensorsdata.cn/manual/data_schema.html) 的数据; 若返回值为 `null`，表示抛弃这条数据;
 * 异常: 抛出异常将导致这条数据被抛弃并输出错误日志;
+
+如果使用了 log4j 
 
 本 repo 提供了一个完整的“数据预处理模块”样例代码，用于实现“概述”中所描述的样例场景，定义接口文件：
 
@@ -158,4 +166,4 @@ usage: [ext-processor-utils] [-c <arg>] [-h] [-j <arg>] -m <arg>
 ## 8. 其他
 
 * 如果想要抛弃一条数据，`process` 函数直接返回 `null` 即可;
-* 如希望返回多条数据，请返回一个 JSON 数组，数组中的每个元素为一条符合 [Sensors Analytics 的数据格式定义](https://www.sensorsdata.cn/manual/data_schema.html);
+* 如希望返回多条数据，请返回一个 JSON 数组，数组中的每个元素都为符合 [Sensors Analytics 的数据格式定义](https://www.sensorsdata.cn/manual/data_schema.html) 的数据;
