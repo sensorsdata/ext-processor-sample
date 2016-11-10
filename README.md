@@ -60,7 +60,7 @@ public interface ExtProcessor {
 * 返回值: 经过处理后的 JSON 或 JSON 数组，例如概述中的第二个 JSON。其格式需要符合 [Sensors Analytics 的数据格式定义](https://www.sensorsdata.cn/manual/data_schema.html); 如果返回值包含多条数据，可返回一个 JSON 数组，数组中的每个元素为一条符合 [数据格式](https://www.sensorsdata.cn/manual/data_schema.html) 的数据; 若返回值为 `null`，表示抛弃这条数据;
 * 异常: 抛出异常将导致这条数据被抛弃并输出错误日志;
 
-如果使用了 log4j 
+如果使用了 log4j (或 slf4j) 日志库，日志将默认输出到 `/data/sa_standalone/logs/extractor` (其中 `/data` 为数据盘挂载点) 下的 `extractor.log` 中。
 
 本 repo 提供了一个完整的“数据预处理模块”样例代码，用于实现“概述”中所描述的样例场景，定义接口文件：
 
