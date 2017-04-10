@@ -98,10 +98,12 @@ public interface ExtProcessor {
       }
   ]
   ```
-* 请注意空指针的问题，比如某个需要处理的 `property` 不是每条数据都存在，如果不存在时取值并使用可能造成空指针异常，如果不在处理模块内部处理该异常直接抛出，将导致这条数据被抛弃;
+* 请注意**空指针的问题**，比如某个需要处理的 `property` 不是每条数据都存在，如果不存在时取值并使用可能造成空指针异常，如果不在处理模块内部处理该异常直接抛出，将导致这条数据被抛弃;
 * 请注意用户属性数据即 `type` 以 `profile_` 开头的数据，是没有 `event` 字段的，若用到 `event` 字段，请先判断字段是否存在;
 * 请用尽量多的判断以确定一条数据是否是你希望修改的数据再做操作;
 * 一条数据若不需要修改直接返回原文本即可;
+* 一般情况下，Sensors Analytics 每台机器实时导入速度最高可以达到约每秒 5k ~ 20k 条（受数据字段数、机器性能等影响而不同），若使用“数据预处理模块”可能带来额外的性能开销，建议使用前对“数据预处理模块”性能进行评估;
+* 极端情况下（如模块重启）同一条数据可能被“数据预处理模块”多次处理。若使用“数据预处理模块”的目的如本 repo 仅添加字段，那么多次处理没有影响，但若是在“数据预处理模块”中做统计等操作（不建议这样做，统计需求建议通过订阅 kafka 数据实现），则需考虑重复执行的影响;
 
 ## 3. 编译打包
 
@@ -145,6 +147,8 @@ usage: [ext-processor-utils] [-c <arg>] [-h] [-j <arg>] -m <arg>
                      info:      查看当前配置状态;
                      run:       运行指定 class 类的 process 方法, 以标准输入的逐行数据作为参数输入,
                                 将返回结果输出到标准输出;
+                     run_with_real_time_data: 使用本机实时的数据作为输入,
+                                              将返回结果输出到标准输出;
 ```
 
 使用 `test` 方法测试 JAR 并加载 Class：
@@ -165,6 +169,29 @@ usage: [ext-processor-utils] [-c <arg>] [-h] [-j <arg>] -m <arg>
 16/10/15 18:27:51 main INFO utils.ExtLibUtils: 加载 jar: /home/sa_cluster/ext-processor-sample-0.1.jar, class: cn.sensorsdata.sample.SampleExtProcessor 成功
 ```
 
+### 4.1 测试运行
+
+使用 `run` 方法加载 JAR 并实例化 Class，以标准输入的逐行数据作为预处理函数输入，并将处理结果输出到标准输出:
+
+```bash
+~/sa/extractor/bin/ext-processor-utils \
+    --jar ext-processor-sample-0.1.jar \
+    --class cn.sensorsdata.sample.SampleExtProcessor \
+    --method run
+```
+
+### 4.2 以线上实时数据测试运行
+
+使用 `run_with_real_time_data` 方法加载 JAR 并实例化 Class，以本机实际接收的数据作为预处理函数输入，并将输入和输出打印到标准输出:
+
+
+```bash
+~/sa/extractor/bin/ext-processor-utils \
+    --jar ext-processor-sample-0.1.jar \
+    --class cn.sensorsdata.sample.SampleExtProcessor \
+    --method run_with_real_time_data
+```
+
 ## 5. 安装
 
 使用 ext-processor-utils 的 `install` 方法安装，例如安装样例执行如下命令：
@@ -178,6 +205,7 @@ usage: [ext-processor-utils] [-c <arg>] [-h] [-j <arg>] -m <arg>
 
 * 由于涉及内部模块启停，安装时请耐心等待;
 * 集群版安装预处理模块会自动分发，不需要每台机器操作;
+* 若已经安装过“数据预处理模块”，再次执行“安装”操作将替换使用新的 JAR 包;
 
 ## 6. 验证
 
@@ -194,3 +222,5 @@ usage: [ext-processor-utils] [-c <arg>] [-h] [-j <arg>] -m <arg>
 ```bash
 ~/sa/extractor/bin/ext-processor-utils --method uninstall
 ```
+
+* 若希望更新 JAR 包，请直接使用工具“安装”新的 JAR 包即可，不需要先进行卸载;

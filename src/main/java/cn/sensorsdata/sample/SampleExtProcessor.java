@@ -5,11 +5,15 @@ import com.sensorsdata.analytics.extractor.processor.ExtProcessor;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Created by fengjiajie on 16/9/28.
  */
 public class SampleExtProcessor implements ExtProcessor {
+
+  private static final Logger logger = LoggerFactory.getLogger(SampleExtProcessor.class);
 
   private ObjectMapper objectMapper = new ObjectMapper();
 
@@ -41,6 +45,8 @@ public class SampleExtProcessor implements ExtProcessor {
       String productName = propertiesNode.get("product_name").asText();
       if ("苹果".equals(productName) || "梨".equals(productName)) {
         propertiesNode.put("product_classify", "水果");
+        // 输出日志到 /data/sa_standalone/logs/extractor 下的 extractor.log 中
+        logger.info("Find a fruit: {}", productName);
       } else if ("萝卜".equals(productName) || "白菜".equals(productName)) {
         propertiesNode.put("product_classify", "蔬菜");
       }
@@ -49,4 +55,3 @@ public class SampleExtProcessor implements ExtProcessor {
     return recordNode.toString();
   }
 }
-
