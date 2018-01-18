@@ -72,7 +72,7 @@ public interface ExtProcessor {
 
 ## 2.1 开发常见问题
 
-* 如果使用了 log4j (或 slf4j) 日志库，日志将默认输出到 `/data/sa_standalone/logs/extractor` (其中 `/data` 为数据盘挂载点) 下的 `extractor.log` 中;
+* 如果使用了 log4j (或 slf4j) 日志库，日志将默认输出到 `/data/sa_cluster/logs/extractor` (其中 `/data` 为数据盘挂载点) 下的 `extractor.log` 中;
 * 如果想要抛弃一条数据，`process` 函数直接返回 `null` 即可;
 * 如希望一次处理返回多条数据(例如一条传入数据输出多条数据，或传入多条数据批处理再全部输出)，请返回一个 JSON 数组，数组中的每个元素都为符合 [Sensors Analytics 的数据格式定义](https://www.sensorsdata.cn/manual/data_schema.html) 的数据:
   ```
@@ -102,7 +102,7 @@ public interface ExtProcessor {
 * 请注意用户属性数据即 `type` 以 `profile_` 开头的数据，是没有 `event` 字段的，若用到 `event` 字段，请先判断字段是否存在;
 * 请用尽量多的判断以确定一条数据是否是你希望修改的数据再做操作;
 * 一条数据若不需要修改直接返回原文本即可;
-* 一般情况下，Sensors Analytics 每台机器实时导入速度最高可以达到约每秒 5k ~ 20k 条（受数据字段数、机器性能等影响而不同），若使用“数据预处理模块”可能带来额外的性能开销，建议使用前对“数据预处理模块”性能进行评估;
+* 一般情况下，Sensors Analytics 每台机器实时导入速度最高可以达到约每秒 5k ~ 20k 条（受数据字段数、机器性能等影响而不同），若使用“数据预处理模块”可能带来额外的性能开销，建议使用前对“数据预处理模块”性能进行评估，更多对性能的影响请参考 [性能](https://github.com/sensorsdata/ext-processor-sample#7-%e6%80%a7%e8%83%bd);
 * 极端情况下（如模块重启）同一条数据可能被“数据预处理模块”多次处理。若使用“数据预处理模块”的目的如本 repo 仅添加字段，那么多次处理没有影响，但若是在“数据预处理模块”中做统计等操作（不建议这样做，统计需求建议通过订阅 kafka 数据实现），则需考虑重复执行的影响;
 
 ## 3. 编译打包
@@ -149,6 +149,9 @@ usage: [ext-processor-utils] [-c <arg>] [-h] [-j <arg>] -m <arg>
                                 将返回结果输出到标准输出;
                      run_with_real_time_data: 使用本机实时的数据作为输入,
                                               将返回结果输出到标准输出;
+    --when_exception_use_original <arg>   当 ExtProcessor 抛异常时导入原始数据而不是直接抛弃,
+                                          yes 表示预处理遇到异常时使用原始数据导入,
+                                          no 表示遇到异常时抛弃该条数据;
 ```
 
 使用 `test` 方法测试 JAR 并加载 Class：
@@ -189,7 +192,8 @@ usage: [ext-processor-utils] [-c <arg>] [-h] [-j <arg>] -m <arg>
 ~/sa/extractor/bin/ext-processor-utils \
     --jar ext-processor-sample-0.1.jar \
     --class cn.sensorsdata.sample.SampleExtProcessor \
-    --method run_with_real_time_data
+    --method run_with_real_time_data \
+    --when_exception_use_original no
 ```
 
 ## 5. 安装
@@ -200,12 +204,14 @@ usage: [ext-processor-utils] [-c <arg>] [-h] [-j <arg>] -m <arg>
 ~/sa/extractor/bin/ext-processor-utils \
     --jar ext-processor-sample-0.1.jar \
     --class cn.sensorsdata.sample.SampleExtProcessor \
-    --method install
+    --method install \
+    --when_exception_use_original yes
 ```
 
 * 由于涉及内部模块启停，安装时请耐心等待;
 * 集群版安装预处理模块会自动分发，不需要每台机器操作;
 * 若已经安装过“数据预处理模块”，再次执行“安装”操作将替换使用新的 JAR 包;
+* when_exception_use_original 设置为 yes 可以避免未考虑到的空指针异常使数据无法导入，但副作用是这条数据没有经过预处理，可能不符合预期而无法用于查询甚至产生脏数据;
 
 ## 6. 验证
 
@@ -215,7 +221,39 @@ usage: [ext-processor-utils] [-c <arg>] [-h] [-j <arg>] -m <arg>
 2. 配置 SDK 使用 [`Debug 模式`](https://www.sensorsdata.cn/manual/debug_mode.html);
 3. 发送一条测试用的数据，观察是否进行了预期处理即可;
 
-## 7. 卸载
+## 7. 性能
+
+执行命令输出导入模块的统计信息：
+
+```
+sa_admin status -m extractor
+```
+
+其中 extProcessorBottleneck 为当前数据预处理模块的性能瓶颈，其计算方法如下：
+
+```java
+/** 初始化统计 **/
+processUseTime = 0;   // 用于统计执行预处理所用时间
+processCount = 0;     // 用于统计调用预处理次数
+
+/** 每次预处理 **/
+start = System.nanoTime();                   // 记录执行预处理前的时间戳
+record = serializeToJson(rawRecord);         // 将数据序列化成 JSON 格式
+extProcessor.process(record);                // 调用预处理函数
+processUseTime += System.nanoTime() - start; // 累加本次执行预处理消耗的时间到总和
+++processCount;                              // 累加执行次数
+
+/** 每 1 分钟计算上 1 分钟统计值，并清零计数 **/
+// 得出每秒最多执行 process() 次数，即此处的性能瓶颈
+extProcessorBottleneck = processCount * 1000000000L / processUseTime;
+processUseTime = 0;
+processCount = 0;
+```
+
+1. 此处计算出来的值 extProcessorBottleneck 相当于仅执行预处理每秒最多多少次，由于导入还有很多其他数据处理步骤，故总导入速度将小于该值;
+2. 导入模块分配的内存有限，若预处理需要消耗较多内存，请提前联系我们调大内存参数，若过多将影响其他模块运行;
+
+## 8. 卸载
 
 若不再需要“数据预处理模块”，可以通过 ext-processor-utils 的 `uninstall` 方法卸载，执行如下命令：
 

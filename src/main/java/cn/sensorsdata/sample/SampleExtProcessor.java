@@ -52,6 +52,6 @@ public class SampleExtProcessor implements ExtProcessor {
       }
     }
 
-    return recordNode.toString();
+    return objectMapper.writeValueAsString(recordNode);
   }
 }
