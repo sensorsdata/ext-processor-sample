@@ -75,7 +75,7 @@ public interface ExtProcessor {
 * 如果使用了 log4j (或 slf4j) 日志库，日志将默认输出到 `/data/sa_cluster/logs/extractor` (其中 `/data` 为数据盘挂载点) 下的 `extractor.log` 中;
 * 如果想要抛弃一条数据，`process` 函数直接返回 `null` 即可;
 * 如希望一次处理返回多条数据(例如一条传入数据输出多条数据，或传入多条数据批处理再全部输出)，请返回一个 JSON 数组，数组中的每个元素都为符合 [Sensors Analytics 的数据格式定义](https://www.sensorsdata.cn/manual/data_schema.html) 的数据:
-  ```
+  ```json
   [
       {
           "distinct_id":"2b0a6f51a3cd6775",
@@ -187,7 +187,6 @@ usage: [ext-processor-utils] [-c <arg>] [-h] [-j <arg>] -m <arg>
 
 使用 `run_with_real_time_data` 方法加载 JAR 并实例化 Class，以本机实际接收的数据作为预处理函数输入，并将输入和输出打印到标准输出:
 
-
 ```bash
 ~/sa/extractor/bin/ext-processor-utils \
     --jar ext-processor-sample-0.1.jar \
@@ -225,7 +224,7 @@ usage: [ext-processor-utils] [-c <arg>] [-h] [-j <arg>] -m <arg>
 
 执行命令输出导入模块的统计信息：
 
-```
+```bash
 sa_admin status -m extractor
 ```
 
