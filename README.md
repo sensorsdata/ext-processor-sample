@@ -6,9 +6,11 @@ Sensors Analytics 从 1.6 开始为用户开放自定义“数据预处理模块
 
 可以使用“数据预处理模块”处理的数据来源包括：
 
-* SDK（各语言 SDK 直接发送的数据，包括可视化埋点的数据。使用 LoggingConsumer 将数据写到文件再使用批量导入工具除外）;
+* SDK（各语言 SDK 直接发送的数据）;
 * LogAgent;
 * FormatImporter;
+
+使用 BatchImporter 和 HdfsImporter 批量导入数据的情况除外。
 
 例如 SDK 发来一条数据，传入“数据预处理模块”时格式如下：
 
