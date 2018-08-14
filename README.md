@@ -74,7 +74,7 @@ public interface ExtProcessor {
 
 ## 2.1 开发常见问题
 
-* 如果使用了 log4j (或 slf4j) 日志库，日志将默认输出到 `/data/sa_cluster/logs/extractor` (其中 `/data` 为数据盘挂载点) 下的 `extractor.log` 中;
+* 如果使用了 log4j (或 slf4j) 日志库，日志将输出到 `/data/sa_cluster/logs/extractor` (其中 `/data` 为数据盘挂载点，请根据实际情况替换) 下的 `extractor.log` 中，并且不支持自定义 log4j 配置。若必须将日志输出到指定位置，可直接在代码中 `FileOutputStream` 写文件或使用其他日志库;
 * 如果想要抛弃一条数据，`process` 函数直接返回 `null` 即可;
 * 如希望一次处理返回多条数据(例如一条传入数据输出多条数据，或传入多条数据批处理再全部输出)，请返回一个 JSON 数组，数组中的每个元素都为符合 [Sensors Analytics 的数据格式定义](https://www.sensorsdata.cn/manual/data_schema.html) 的数据:
   ```json
@@ -104,7 +104,7 @@ public interface ExtProcessor {
 * 请注意用户属性数据即 `type` 以 `profile_` 开头的数据，是没有 `event` 字段的，若用到 `event` 字段，请先判断字段是否存在;
 * 请用尽量多的判断以确定一条数据是否是你希望修改的数据再做操作;
 * 一条数据若不需要修改直接返回原文本即可;
-* 一般情况下，Sensors Analytics 每台机器实时导入速度最高可以达到约每秒 5k ~ 20k 条（受数据字段数、机器性能等影响而不同），若使用“数据预处理模块”可能带来额外的性能开销，建议使用前对“数据预处理模块”性能进行评估，更多对性能的影响请参考 [性能](https://github.com/sensorsdata/ext-processor-sample#7-%e6%80%a7%e8%83%bd);
+* 一般情况下，Sensors Analytics 每台机器实时导入速度最高可以达到约每秒 5k ~ 30k 条（受数据字段数、机器性能等影响而不同），若使用“数据预处理模块”可能带来额外的性能开销，建议使用前对“数据预处理模块”性能进行评估，更多对性能的影响请参考 [性能](https://github.com/sensorsdata/ext-processor-sample#7-%e6%80%a7%e8%83%bd);
 * 极端情况下（如模块重启）同一条数据可能被“数据预处理模块”多次处理。若使用“数据预处理模块”的目的如本 repo 仅添加字段，那么多次处理没有影响，但若是在“数据预处理模块”中做统计等操作（不建议这样做，统计需求建议通过订阅 kafka 数据实现），则需考虑重复执行的影响;
 * 导入模块通过反射实例化用户指定的预处理类，并通过接口进行访问。不建议在“数据预处理模块”中包含复杂逻辑，此部分的问题需相关开发人员自行调试;
 * 预处理类在一个 JVM 内可能被实例化多次，对于一个实例不会被多线程同时访问，但多个实例有可能被同时访问;
@@ -129,7 +129,7 @@ ext-processor-utils 是用于测试、部署“数据预处理模块”的工具
 
 将编译出的 JAR 文件上传到部署 Sensors Analytics 的机器上，例如 `ext-processor-sample-0.1.jar`。
 
-切换到 `sa_cluster` 或 `sa_standalone` 账户，例如切换到 `sa_cluster` 通过：
+切换到 `sa_cluster` 账户：
 
 ```bash
 sudo su - sa_cluster
