@@ -141,21 +141,33 @@ sudo su - sa_cluster
 ~/sa/extractor/bin/ext-processor-utils
 
 usage: [ext-processor-utils] [-c <arg>] [-h] [-j <arg>] -m <arg>
- -c,--class <arg>    实现 ExtProcessor 的类名, 例如 cn.kbyte.CustomProcessor
- -h,--help           help
- -j,--jar <arg>      包含 ExtProcessor 的 jar, 例如 custom-processor-0.1.jar
- -m,--method <arg>   操作类型, 可选 test/run/install/uninstall/info
-                     test:      测试 jar 是否可加载;
-                     install:   安装 ExtProcessor;
-                     uninstall: 卸载 ExtProcessor;
-                     info:      查看当前配置状态;
-                     run:       运行指定 class 类的 process 方法, 以标准输入的逐行数据作为参数输入,
-                                将返回结果输出到标准输出;
-                     run_with_real_time_data: 使用本机实时的数据作为输入,
-                                              将返回结果输出到标准输出;
-    --when_exception_use_original <arg>   当 ExtProcessor 抛异常时导入原始数据而不是直接抛弃,
-                                          yes 表示预处理遇到异常时使用原始数据导入,
-                                          no 表示遇到异常时抛弃该条数据;
+ -c,--class <arg>                         实现 ExtProcessor 的类名, 例如
+                                          cn.kbyte.CustomProcessor
+ -h,--help                                help
+ -j,--jar <arg>                           包含 ExtProcessor 的 jar, 例如
+                                          custom-processor-0.1.jar
+ -m,--method <arg>                        操作类型, 可选
+                                          test/run/install/uninstall/info/
+                                          run_with_real_time_data
+                                          test: 测试 jar 是否可加载;
+                                          run: 运行指定 class 类的 process 方法,
+                                          以标准输入的逐行数据作为参数输入, 将返回结果输出到标准输出;
+                                          run_with_real_time_data:
+                                          使用本机实时的数据作为输入, 将返回结果输出到标准输出;
+                                          install: 安装 ExtProcessor;
+                                          uninstall: 卸载 ExtProcessor;
+                                          info: 查看当前配置状态;
+ -t,--add_in_track_signup <arg>           是否将预处理应用于 track signup 的单独处理流中.
+                                          yes 表示，再打开 track signup
+                                          的处理流的前提下，会同时将预处理的内容也添加到 track
+                                          signup 流中, no 表示在 track signup
+                                          流中不进行预处理。
+                                          如果您的预处理会影响到 track_signup
+                                          的结果（例如，会修改 distinct_id 等），请打开此开关
+    --when_exception_use_original <arg>   当 ExtProcessor
+                                          抛异常时导入原始数据而不是直接抛弃, yes
+                                          表示预处理遇到异常时使用原始数据导入, no
+                                          表示遇到异常时抛弃该条数据
 ```
 
 使用 `test` 方法测试 JAR 并加载 Class：
@@ -196,6 +208,7 @@ usage: [ext-processor-utils] [-c <arg>] [-h] [-j <arg>] -m <arg>
     --jar ext-processor-sample-0.1.jar \
     --class cn.sensorsdata.sample.SampleExtProcessor \
     --method run_with_real_time_data \
+    --add_in_track_signup yes \
     --when_exception_use_original no
 ```
 
@@ -208,12 +221,14 @@ usage: [ext-processor-utils] [-c <arg>] [-h] [-j <arg>] -m <arg>
     --jar ext-processor-sample-0.1.jar \
     --class cn.sensorsdata.sample.SampleExtProcessor \
     --method install \
+    --add_in_track_signup yes \
     --when_exception_use_original yes
 ```
 
 * 由于涉及内部模块启停，安装时请耐心等待;
 * 集群版安装预处理模块会自动分发，不需要每台机器操作;
 * 若已经安装过“数据预处理模块”，再次执行“安装”操作将替换使用新的 JAR 包;
+* add_in_track_signup 设置为 yes，可以将预处理对于数据操作同时加入到单独的 TrackSignup 流中，当预处理会影响到 TrackSignup 时（比如会修改 distinct_id 等情况时），需要设置为 yes。否则请设置为 no。
 * when_exception_use_original 设置为 yes 可以避免未考虑到的空指针异常使数据无法导入，但副作用是这条数据没有经过预处理，可能不符合预期而无法用于查询甚至产生脏数据;
 
 ## 6. 验证
